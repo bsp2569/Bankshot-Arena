@@ -1,95 +1,64 @@
 # Bankshot Arena
 
-A wave-survival FPS in **Unity + C#** where the core mechanics are built on 3D math. Your bullets **ricochet**, and a **temporary, directional armor plate** turns the damage you absorb into a charged return shot.
+A small wave-survival FPS I made in Unity and C#. I wanted to get properly comfortable with the 3D math behind games, so instead of building a standard shooter I designed two mechanics that can't work without it: bullets that bounce off walls, and armor that only protects you from the front.
 
-> Built with an AI coding assistant (Claude), then studied, tuned and extended by me. Every system below is something I can explain line by line.
+## How it plays
 
----
+Enemies come at you in waves. Each wave there are more of them and they aim better.
 
-## The twist
+**Your bullets ricochet.** Every shot can bounce off walls up to three times, and each bounce makes it hit harder. Kills after a bounce are also worth more points, so a two-bounce kill scores three times as much as a direct hit. The arena has a ring of angled walls in the middle, and you'll get better scores once you start using them to shoot around corners.
 
-| Mechanic | What it does | Why it changes play |
-|---|---|---|
-| **Ricochet rounds** | Shots reflect off walls up to 3 times. Each bounce adds **+50% damage**, and a kill scores **x(1 + bounces)**. | The arena has a ring of angled deflector walls. Bank shots around cover are the high-skill, high-score play. |
-| **Aegis Plate (temporary armor)** | A pickup gives armor for **8 s or 80 points**, whichever runs out first. It flickers before it expires and the pickup respawns after 15 s. | Armor pickups become control points worth fighting over. |
-| **Directional coverage** | The plate only blocks hits from your **front 140°**. Hits from the sides or back go straight through. | Armor doesn't make you invincible. Flanking still kills you. |
-| **Absorb & Return** | Damage the plate soaks fills a **Charge** meter. Your next shot spends it for **up to 2.5x damage** (purple tracer). | Armor changes your behavior: turn *into* the fire, tank it, then punish. |
-| **Enemies lead their shots** | Enemies solve an intercept equation to aim where you'll *be*. Accuracy rises every wave. | Running in a straight line stops working. Strafing and changing direction matter. |
+**Armor is temporary and one-sided.** There are a few glowing crystals around the map. Walk through one and you get the Aegis Plate for 8 seconds, or until it has absorbed 80 damage. It only covers the front of you, so if an enemy gets behind you it does nothing. It flickers just before it runs out, and the crystal comes back 15 seconds later.
+
+**Blocked damage comes back.** Whatever the plate absorbs charges up your next shot, up to 2.5x damage. You can tell a shot is charged because the tracer turns purple. In practice this means that when you have armor, you want to turn and face the enemies, take the hits, and fire back.
+
+**Enemies aim where you're going.** They work out where you'll be by the time their shot arrives and aim there. Early waves are bad at it, but by wave five or so running in a straight line will get you killed.
 
 ## Controls
 
-| Key | Action |
-|---|---|
-| WASD | Move |
-| Mouse | Look |
-| Shift | Sprint |
-| Space | Jump |
-| Left click | Fire (click once to capture the mouse) |
-| R | Reload / restart after death |
-| Esc | Release mouse |
+WASD to move, mouse to look, Shift to sprint, Space to jump, left click to shoot, R to reload. Click the game window once to capture the mouse, and press Esc to let go of it. When you die, press R to restart.
 
-## Setup (about 5 minutes)
+## Running it
 
-1. **Unity 2022.3 LTS or Unity 6** (URP or Built-in both work). Create a new **3D** project.
-2. **Window > Package Manager > Unity Registry > AI Navigation** > Install.
-3. **Edit > Project Settings > Player > Other Settings > Active Input Handling** > set to **Both**. The scripts use the classic `Input` class, and Unity 6 projects default to the new Input System only. Unity restarts.
+You'll need Unity 2022.3 LTS or Unity 6. Either the Built-in render pipeline or URP is fine.
+
+1. Create a new 3D project.
+2. In Package Manager, install **AI Navigation** (it's under Unity Registry). The enemies need it for pathfinding.
+3. Go to Project Settings > Player > Other Settings and set **Active Input Handling** to **Both**. The scripts use the classic `Input` class, and new Unity 6 projects turn that off by default.
 4. Copy the `Assets/BankshotArena` folder into your project's `Assets` folder.
-5. Menu **Tools > Bankshot Arena > Build Demo Scene**. This builds the arena, bakes the NavMesh, and creates the player, enemy and projectile prefabs, armor pickups, spawner and HUD. It saves everything to `Assets/BankshotArena/Generated`.
-6. Press **Play**.
+5. From the menu bar, run **Tools > Bankshot Arena > Build Demo Scene**, then press Play.
 
-No art assets needed: everything is primitives, so the repo stays tiny.
+That menu item builds the whole level for you: the arena, the navmesh, the player, enemies, pickups and the HUD. Everything is made from basic shapes, so you don't need to download any art.
 
-## Project structure
+## The math
 
-```
-Assets/BankshotArena/
-├── Scripts/
-│   ├── Core/       GameMath.cs (all the math), GameManager.cs, IDamageable.cs
-│   ├── Player/     PlayerController.cs, PlayerHealth.cs, TemporaryArmor.cs
-│   ├── Weapons/    RicochetWeapon.cs, TracerPool.cs
-│   ├── Enemies/    EnemyAI.cs, EnemyHealth.cs, EnemyProjectile.cs, WaveSpawner.cs
-│   ├── Pickups/    ArmorPickup.cs
-│   └── UI/         HUD.cs
-└── Editor/         BankshotSceneBuilder.cs (one-click scene setup)
-```
+Most of it lives in `Scripts/Core/GameMath.cs`, and I've written the reasoning for each formula in the comments there. Briefly:
 
-## Where the 3D math lives
+- **Ricochets** reflect the bullet's direction off the wall using `r = d − 2(d·n)n`, where `n` is the direction the wall faces.
+- **The armor's front arc** and **the enemies' field of view** both use the dot product. For two unit vectors, `dot(a, b)` is the cosine of the angle between them, so comparing it to `cos(70°)` tells you whether something is inside a 140° cone without calculating any angles.
+- **Enemy aiming** solves a quadratic to find when a bullet fired now would meet you if you kept moving the same way. Each enemy then blends between aiming at you and aiming at that spot, and the blend shifts towards the second as waves go up.
+- **Weapon spread** picks a random direction inside a small cone. The cone is sampled evenly so shots don't bunch up in the middle.
+- **Enemies strafe** sideways using a cross product to find the direction perpendicular to you, and they turn smoothly at a fixed number of degrees per second.
+- **Enemy spawn points** are evenly spaced around a circle, using `cos` and `sin`.
+- **The red damage arrow** on the HUD converts the hit direction into the player's local space and uses `atan2` to get the angle to draw it at. It turns blue when your armor blocks the hit.
 
-All of it is in `GameMath.cs`, with comments deriving each formula.
+## Performance
 
-| Feature | Math | Used in |
-|---|---|---|
-| Ricochet | Reflection: `r = d - 2(d·n)n` | `RicochetWeapon` |
-| Armor front arc, enemy vision cone, "am I facing the player" | Dot product: `dot(a,b) >= cos(θ)` (no `Acos` per frame) | `TemporaryArmor`, `EnemyAI` |
-| Weapon spread | Uniform sampling on a cone cap + `Quaternion.LookRotation` | `GameMath.RandomDirectionInCone` |
-| Enemy predictive aim | Quadratic intercept: `(V·V − s²)t² + 2(D·V)t + D·D = 0` | `EnemyAI.Fire` |
-| Aim skill per wave | `Vector3.Slerp` between direct and predicted aim | `EnemyAI.Fire` |
-| Enemy strafing | Cross product: `up × toPlayer` = sideways direction | `EnemyAI` |
-| Smooth turning | `Quaternion.RotateTowards` (deg/sec × deltaTime) | `EnemyAI.FaceTowards` |
-| Spawn ring | Polar to Cartesian: `(r cos θ, 0, r sin θ)` | `WaveSpawner` |
-| Damage direction arrow | World → local space, then `atan2(x, z)` | `HUD` |
-| Jump | `v = √(2gh)` | `PlayerController` |
-| Mouse look | Yaw on body, clamped pitch on camera pivot (no gimbal flip) | `PlayerController` |
+I tried to avoid the usual things that make Unity games stutter:
 
-## Performance decisions
+- Bullet tracers come from a fixed pool that gets reused, so shooting doesn't create new objects.
+- Enemy projectiles use a shared raycast buffer, so they don't allocate memory every frame. They also check the whole distance they'll travel each frame, which stops fast shots passing through thin walls.
+- Enemies recalculate their path five times a second instead of every frame.
+- Hit flashes use `MaterialPropertyBlock`, so enemies don't each get their own copy of a material.
 
-The JD mentions *reducing load times and improving frame rates*. These are the choices made for that:
+## What's next
 
-- **Object pool for tracers**: a fixed set of `LineRenderer`s reused round-robin, so firing allocates nothing.
-- **Zero-allocation physics**: `RaycastNonAlloc` with a shared buffer for enemy projectiles, and a reused `List` for the bullet path.
-- **Continuous collision for projectiles**: each frame raycasts along the distance travelled, so fast bolts can't tunnel through thin walls.
-- **Throttled pathfinding**: enemies re-path every 0.2 s instead of calling `SetDestination` every frame.
-- **`MaterialPropertyBlock` for hit flashes**: no per-enemy material copies.
-- **Frame-rate independence**: all movement and timers scale by `Time.deltaTime`.
-
-## Roadmap (things I'd add next)
-
-- [ ] Pool enemy projectiles and enemies too, and benchmark FPS at 50 / 200 / 500 enemies before and after (Unity Profiler screenshots in this README).
-- [ ] Bullet trajectory **preview line** while aiming, showing the first bounce.
-- [ ] Damage falloff based on **incidence angle** (`GameMath.IncidenceAngle`): grazing bounces keep more energy.
-- [ ] Unit tests for `GameMath` (Unity Test Framework).
-- [ ] Mobile touch controls (dual virtual sticks).
+- Pool the enemy projectiles and enemies too, then measure the frame rate with large numbers of enemies before and after.
+- Show a line while aiming that previews where your first bounce will go.
+- Make bounces that only graze the wall lose less damage than head-on ones.
+- Add tests for `GameMath`.
+- Touch controls, to try it on a phone.
 
 ## Credits
 
-Code written with the help of Claude (Anthropic) as an AI pair programmer. Math references: Freya Holmér's *Math for Game Devs* lectures and Catlike Coding tutorials.
+I built this with Claude (Anthropic) as a coding assistant, then went through it, tuned it and extended it myself. Most of what I know about the math came from Freya Holmér's *Math for Game Devs* lectures and the Catlike Coding tutorials.
