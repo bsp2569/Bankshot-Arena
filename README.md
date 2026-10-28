@@ -19,13 +19,11 @@ Enemies come at you in waves. Each wave there are more of them and they aim bett
 WASD to move, mouse to look, Shift to sprint, Space to jump, left click to shoot, R to reload. Click the game window once to capture the mouse, and press Esc to let go of it. When you die, press R to restart.
 
 ## Running it
-
-You'll need Unity 2022.3 LTS or Unity 6. Either the Built-in render pipeline or URP is fine.
-
+Requirements: Unity
 1. Create a new 3D project.
 2. In Package Manager, install **AI Navigation** (it's under Unity Registry). The enemies need it for pathfinding.
 3. Go to Project Settings > Player > Other Settings and set **Active Input Handling** to **Both**. The scripts use the classic `Input` class, and new Unity 6 projects turn that off by default.
-4. Copy the `Assets/BankshotArena` folder into your project's `Assets` folder.
+4. Copy the `Assets/BankshotArena` folder into `Assets` folder.
 5. From the menu bar, run **Tools > Bankshot Arena > Build Demo Scene**, then press Play.
 
 That menu item builds the whole level for you: the arena, the navmesh, the player, enemies, pickups and the HUD. Everything is made from basic shapes, so you don't need to download any art.
@@ -61,4 +59,4 @@ I tried to avoid the usual things that make Unity games stutter:
 
 ## Credits
 
-I built this with Claude (Anthropic) as a coding assistant, then went through it, tuned it and extended it myself. Most of what I know about the math came from Freya Holmér's *Math for Game Devs* lectures and the Catlike Coding tutorials.
+Most of the math came from Freya Holmér's *Math for Game Devs* lectures and the Catlike Coding tutorials.
